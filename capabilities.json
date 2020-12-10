@@ -1,0 +1,51 @@
+{
+  "supportsHighlight" : true,
+  "dataRoles": [
+    {
+      "displayName": "Paths",
+      "name": "path",
+      "kind": "Grouping"
+    },
+    {
+      "displayName": "Identifiers",
+      "name": "identifier",
+      "kind": "Grouping"
+    },
+    {
+      "displayName": "Selection",
+      "name": "target",
+      "kind": "Measure"
+    }
+  ],
+  "objects": {
+  },
+  "dataViewMappings": [
+    {
+      "categorical": {
+        "categories": {
+          "select": [
+            {
+              "for": {
+                "in": "path"
+              }
+            },
+            {
+              "for": {
+                "in": "identifier"
+              }
+            }
+          ]
+        },
+        "values": {
+          "group": {
+            "by": "Series",
+            "select": [
+              { "bind": { "to": "target" } }
+            ]
+          }
+        }
+      }
+
+    }
+  ]
+}

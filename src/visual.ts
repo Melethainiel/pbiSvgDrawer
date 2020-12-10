@@ -37,8 +37,6 @@ import VisualObjectInstance = powerbi.VisualObjectInstance;
 import DataView = powerbi.DataView;
 import VisualObjectInstanceEnumerationObject = powerbi.VisualObjectInstanceEnumerationObject;
 import ISelectionManager = powerbi.extensibility.ISelectionManager;
-import ISelectionIdBuilder = powerbi.visuals.ISelectionIdBuilder;
-
 import {VisualSettings} from "./settings";
 
 import * as d3 from "d3";
@@ -49,7 +47,8 @@ export class Visual implements IVisual {
     private settings: VisualSettings;
     private selectionManager: ISelectionManager;
     private svg: d3.Selection<SVGElement>;
-    private group: d3.Selection<SVGElement>;
+    private formGroup: d3.Selection<SVGElement>;
+    private textGroup: d3.Selection<SVGElement>;
     private host: powerbi.extensibility.visual.IVisualHost;
 
     constructor(options: VisualConstructorOptions) {
@@ -58,14 +57,18 @@ export class Visual implements IVisual {
         this.svg = d3.select(options.element)
             .append('svg')
             .classed('view', true);
-        this.group = this.svg
+        this.formGroup = this.svg
             .append('g')
-            .classed('group', true);
+            .classed('formGroup', true);
+        this.textGroup = this.svg
+            .append('g')
+            .classed('textGroup', true);
 
         this.selectionManager = this.host.createSelectionManager();
     }
 
     public update(options: VisualUpdateOptions) {
+        this.settings = Visual.parseSettings(options && options.dataViews && options.dataViews[0]);
         let viewModel = this.getViewModel(options);
         let width = options.viewport.width;
         let height = options.viewport.height;
@@ -77,13 +80,41 @@ export class Visual implements IVisual {
 
         viewModel.crop(width, height);
 
-        this.group.attr({
+        this.formGroup.attr({
             'transform':`scale(${viewModel.Scale}) translate(${viewModel.TranslateX},${viewModel.TranslateY})`
         })
+        this.generateForms(viewModel);
+        // this.generateText(viewModel);
 
-        let forms = this.group
+
+    }
+
+    private generateText(viewModel: IViewModel) {
+        let texts = this.textGroup
+            .selectAll('text')
+            .data(viewModel.Forms);
+
+        texts.enter()
+            .append('text');
+
+        texts
+            .attr({
+                'x': d => (d.Center[0] + viewModel.TranslateX) * viewModel.Scale,
+                'y': d =>( d.Center[1]+ viewModel.TranslateY) * viewModel.Scale
+            })
+            .style({
+                'font-size': '15px'
+            })
+            .text(d => d.Id)
+
+        texts.exit().remove();
+    }
+
+    private generateForms(viewModel: IViewModel) {
+        let forms = this.formGroup
             .selectAll('path')
-            .data(viewModel.Forms.filter(d => d instanceof Form));
+            .data(viewModel.Forms);
+
 
         forms.enter()
             .append('path');
@@ -94,7 +125,11 @@ export class Visual implements IVisual {
                 id: d => d.Id
             })
             .style({
-                fill: d => d.Color,
+                'fill': d => viewModel.Highlights
+                    ? d.Highlighted
+                        ? this.settings.Color.Highlight
+                        : this.settings.Color.Basic
+                    : this.settings.Color.Basic,
                 'fill-opacity': d => viewModel.Highlights
                     ? d.Highlighted
                         ? 1.0
@@ -109,7 +144,12 @@ export class Visual implements IVisual {
                                 ? d => ids.indexOf(d.Identity) >= 0
                                     ? 1.0
                                     : 0.5
-                                : 1.0
+                                : 1.0,
+                            'fill': ids.length > 0
+                                ? d => ids.indexOf(d.Identity) >= 0
+                                    ? this.settings.Color.Highlight
+                                    : this.settings.Color.Basic
+                                : this.settings.Color.Basic
                         })
                     })
             })
@@ -133,7 +173,6 @@ export class Visual implements IVisual {
             });
 
         forms.exit().remove();
-
     }
 
     private getViewModel(options: VisualUpdateOptions): IViewModel {
@@ -160,8 +199,6 @@ export class Visual implements IVisual {
         for (let i = 0, len = ids.length; i < len; i++) {
 
             let form = Form.PARSE(<string>ids[i], <string>data[i]);
-
-            form.Color = this.host.colorPalette.getColor(form.Id).value;
 
             form.Identity = this.host.createSelectionIdBuilder()
                 .withCategory(idCategories, i)
@@ -193,6 +230,7 @@ export class Visual implements IVisual {
      *
      */
     public enumerateObjectInstances(options: EnumerateVisualObjectInstancesOptions): VisualObjectInstance[] | VisualObjectInstanceEnumerationObject {
+        debugger
         return VisualSettings.enumerateObjectInstances(this.settings || VisualSettings.getDefault(), options);
     }
 }

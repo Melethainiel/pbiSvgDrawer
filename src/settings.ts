@@ -31,7 +31,15 @@ import DataViewObjectsParser = dataViewObjectsParser.DataViewObjectsParser;
 
 // tslint:disable-next-line:export-name
 export class VisualSettings extends DataViewObjectsParser {
-
+    public Color : IColorSetting = new ColorSetting();
 }
 
+interface IColorSetting {
+    Basic: string;
+    Highlight: string;
+}
 
+export class ColorSetting implements IColorSetting{
+    Basic: string = "#168980";
+    Highlight: string = "#B59525";
+}

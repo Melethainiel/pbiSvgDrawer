@@ -18,6 +18,31 @@
     }
   ],
   "objects": {
+    "Color": {
+      "displayName": "Couleurs",
+      "properties": {
+        "Basic": {
+          "displayName": "Base",
+          "type": {
+            "fill": {
+              "solid": {
+                "color": true
+              }
+            }
+          }
+        },
+        "Highlight": {
+          "displayName": "Surbrillance",
+          "type": {
+            "fill": {
+              "solid": {
+                "color": true
+              }
+            }
+          }
+        }
+      }
+    }
   },
   "dataViewMappings": [
     {

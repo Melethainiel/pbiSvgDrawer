@@ -19,7 +19,8 @@ export interface IForm {
     Identity: powerbi.visuals.ISelectionId
     Highlighted: boolean;
     Tooltip: VisualTooltipDataItem[];
-    Coordinates: Number[][];
+    Coordinates: number[][];
+    Center: number[];
 }
 
 export class ViewModel implements IViewModel {
@@ -61,14 +62,29 @@ export class Form implements IForm {
         return this._Data;
     }
 
-    get Coordinates(): Number[][] {
+    get Coordinates(): number[][] {
         return this._Coordinates;
+    }
+
+    get Center() : number[]{
+        let coords = this._Coordinates.filter(j => j != null);
+
+        let xCoords = coords.map(i => i[0]);
+        let yCoords = coords.map(i => i[1]);
+
+        let xMin = Math.min(...xCoords);
+        let xMax = Math.max(...xCoords);
+        let yMin = Math.min(...yCoords);
+        let yMax = Math.max(...yCoords);
+
+        return [xMax-xMin, yMax-yMin];
+
     }
 
 
     private _Data: string
     private _Id: string;
-    private _Coordinates: Number[][];
+    private _Coordinates: number[][];
 
     Color: string;
     Highlighted: boolean;

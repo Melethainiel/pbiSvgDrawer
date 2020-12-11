@@ -38,9 +38,10 @@ import DataView = powerbi.DataView;
 import VisualObjectInstanceEnumerationObject = powerbi.VisualObjectInstanceEnumerationObject;
 import ISelectionManager = powerbi.extensibility.ISelectionManager;
 import {VisualSettings} from "./settings";
+import {pixelConverter} from "powerbi-visuals-utils-typeutils";
 
 import * as d3 from "d3";
-import {IForm, IViewModel, Form, ViewModel} from "./visualViewModel";
+import {IViewModel, Form, ViewModel} from "./visualViewModel";
 
 
 export class Visual implements IVisual {
@@ -81,33 +82,44 @@ export class Visual implements IVisual {
         viewModel.crop(width, height);
 
         this.formGroup.attr({
-            'transform':`scale(${viewModel.Scale}) translate(${viewModel.TranslateX},${viewModel.TranslateY})`
+            'transform': `scale(${viewModel.Scale}) translate(${viewModel.TranslateX},${viewModel.TranslateY})`
         })
+        debugger
+
         this.generateForms(viewModel);
-        // this.generateText(viewModel);
+        this.generateText(viewModel);
 
 
     }
 
     private generateText(viewModel: IViewModel) {
-        let texts = this.textGroup
-            .selectAll('text')
-            .data(viewModel.Forms);
+        if (this.settings.Label.show) {
+            let texts = this.textGroup
+                .selectAll('text')
+                .data(viewModel.Forms);
 
-        texts.enter()
-            .append('text');
+            texts.enter()
+                .append('text');
 
-        texts
-            .attr({
-                'x': d => (d.Center[0] + viewModel.TranslateX) * viewModel.Scale,
-                'y': d =>( d.Center[1]+ viewModel.TranslateY) * viewModel.Scale
-            })
-            .style({
-                'font-size': '15px'
-            })
-            .text(d => d.Id)
+            texts
+                .attr({
+                    'x': d => (d.Center[0] + viewModel.TranslateX) * viewModel.Scale,
+                    'y': d => (d.Center[1] + viewModel.TranslateY) * viewModel.Scale
+                })
+                .style({
+                    'font-size': pixelConverter.fromPointToPixel(this.settings.Label.fontSize),
+                    'font-family' :  this.settings.Label.fontFamily,
+                    'fill' : this.settings.Label.fontColor,
+                    'text-anchor': this.settings.Label.alignment(this.settings.Label.textAlignment)
+                })
+                .text(d => d.Label)
 
-        texts.exit().remove();
+            texts.exit().remove();
+        } else {
+            this.textGroup
+                .selectAll('text')
+                .remove()
+        }
     }
 
     private generateForms(viewModel: IViewModel) {
@@ -192,20 +204,26 @@ export class Visual implements IVisual {
         let data = dv[0].categorical.categories[0].values;
         let idCategories = dv[0].categorical.categories[1];
         let ids = idCategories.values;
+
         let highlights = dv[0].categorical.values[0].highlights;
+        let labels = dv[0].categorical.values[1];
+        let labelValues = labels ? labels.values : undefined;
+
         let metadata = dv[0].metadata;
         let categoryColumns = metadata.columns.filter(c => c.roles['identifier'])[0].displayName;
 
         for (let i = 0, len = ids.length; i < len; i++) {
 
             let form = Form.PARSE(<string>ids[i], <string>data[i]);
-
             form.Identity = this.host.createSelectionIdBuilder()
                 .withCategory(idCategories, i)
                 .createSelectionId();
             form.Highlighted = highlights
                 ? !!highlights[i]
                 : false;
+            form.Label = labelValues
+                ? <string>labelValues[i]
+                : "";
             form.Tooltip = [{
                 displayName: categoryColumns,
                 value: form.Id
@@ -230,7 +248,6 @@ export class Visual implements IVisual {
      *
      */
     public enumerateObjectInstances(options: EnumerateVisualObjectInstancesOptions): VisualObjectInstance[] | VisualObjectInstanceEnumerationObject {
-        debugger
         return VisualSettings.enumerateObjectInstances(this.settings || VisualSettings.getDefault(), options);
     }
 }

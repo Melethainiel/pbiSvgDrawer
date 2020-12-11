@@ -5,17 +5,17 @@
     "guid": "pbiSvgDrawerAE55660EC7B343C087210200AD9912BA",
     "visualClassName": "Visual",
     "version": "1.0.0",
-    "description": "",
-    "supportUrl": "",
+    "description": "Display SVG from path data",
+    "supportUrl": "t.galland@bouygues-construction.com",
     "gitHubUrl": ""
   },
   "apiVersion": "2.6.0",
   "author": {
-    "name": "",
-    "email": ""
+    "name": "Thibaud Galland Demanneville",
+    "email": "t.galland@bouygues-construction.com"
   },
   "assets": {
-    "icon": "assets/icon.png"
+    "icon": "assets/logo.png"
   },
   "externalJS": [
     "node_modules/d3/d3.js"

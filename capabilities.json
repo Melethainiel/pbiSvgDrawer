@@ -15,6 +15,11 @@
       "displayName": "Selection",
       "name": "target",
       "kind": "Measure"
+    },
+    {
+      "displayName": "Text",
+      "name": "text",
+      "kind": "Measure"
     }
   ],
   "objects": {
@@ -42,6 +47,51 @@
           }
         }
       }
+    },
+    "Label": {
+      "displayName": "Texte",
+      "properties": {
+        "show": {
+          "displayName": "Show",
+          "type": {
+            "bool": true
+          }
+        },
+        "fontSize": {
+          "displayName": "Taille du texte",
+          "type": {
+            "formatting": {
+              "fontSize": true
+            }
+          }
+        },
+        "fontFamily": {
+          "displayName": "Famille de police",
+          "type": {
+            "formatting": {
+              "fontFamily": true
+            }
+          }
+        },
+        "fontColor": {
+          "displayName": "Couleur de police",
+          "type": {
+            "fill": {
+              "solid": {
+                "color": true
+              }
+            }
+          }
+        },
+        "textAlignment": {
+          "displayName": "Alignement",
+          "type": {
+            "formatting": {
+              "alignment": true
+            }
+          }
+        }
+      }
     }
   },
   "dataViewMappings": [
@@ -65,12 +115,22 @@
           "group": {
             "by": "Series",
             "select": [
-              { "bind": { "to": "target" } }
+              { "bind": { "to": "target" } },
+              { "bind": { "to": "text" } }
             ]
           }
         }
       }
 
     }
-  ]
+  ],
+  "tooltips": {
+    "supportedTypes": {
+      "default": true,
+      "canvas": true
+    },
+    "roles": [
+      "tooltips"
+    ]
+  }
 }

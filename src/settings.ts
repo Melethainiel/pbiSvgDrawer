@@ -32,6 +32,7 @@ import DataViewObjectsParser = dataViewObjectsParser.DataViewObjectsParser;
 // tslint:disable-next-line:export-name
 export class VisualSettings extends DataViewObjectsParser {
     public Color : IColorSetting = new ColorSetting();
+    public Label : LabelSetting = new LabelSetting();
 }
 
 interface IColorSetting {
@@ -42,4 +43,22 @@ interface IColorSetting {
 export class ColorSetting implements IColorSetting{
     Basic: string = "#168980";
     Highlight: string = "#B59525";
+}
+export class LabelSetting{
+    show: boolean = false;
+    fontSize: number = 12;
+    fontFamily: string = "Segoe UI";
+    fontColor: string = "#252423";
+    textAlignment: string = "middle";
+    public alignment(value : string): string {
+        debugger
+        switch (value){
+            case "left" :
+                return "end";
+            case "center" :
+                return "middle";
+            case "right" :
+                return "start";
+        }
+    }
 }

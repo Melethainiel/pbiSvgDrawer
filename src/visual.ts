@@ -51,9 +51,12 @@ import { IViewModel } from './interfaces/IViewModel';
 export class Visual implements IVisual {
     private settings: VisualSettings;
     private selectionManager: ISelectionManager;
+    private viewModel: IViewModel;
     private svg: d3.Selection<SVGElement>;
     private wrapper: d3.Selection<HTMLElement>;
     private schedule: d3.Selection<HTMLElement>;
+    private button: d3.Selection<HTMLElement>;
+    private svgGroup: d3.Selection<SVGElement>;
     private formGroup: d3.Selection<SVGElement>;
     private textGroup: d3.Selection<SVGElement>;
     private host: powerbi.extensibility.visual.IVisualHost;
@@ -62,6 +65,7 @@ export class Visual implements IVisual {
         this.host = options.host;
         this.createSkeleton(options);
         this.selectionManager = this.host.createSelectionManager();
+
     }
 
     private createSkeleton(options: VisualConstructorOptions) {
@@ -72,6 +76,45 @@ export class Visual implements IVisual {
                 'display': 'grid',
                 'grid-template-columns': 'auto 1fr auto',
                 'grid-template-rows': 'auto 1fr auto'
+            });
+
+        this.button = this.wrapper
+            .append('button')
+            .on('click', () => {
+                this.svgGroup.attr('transform', null)
+                this.selectionManager.clear();
+                this.generateForms();
+            })
+            .style({
+                'position':'absolute',
+                'right':'25px',
+                'top':'15px',
+                'padding':'2',
+                'border':'0',
+                'border-radius':'5px'
+            })
+            .append('svg')
+            .attr({
+                'viewBox':'0 0 24 24',
+                'color' : 'black',
+                'width':'24px',
+                'height':'24px'
+            })
+            .append('path')
+            .attr('d', 'M14 12c0-1.1-.9-2-2-2s-2 .9-2 2 .9 2 2 2 2-.9 2-2zm-2-9c-4.97 0-9 4.03-9 9H0l4 4 4-4H5c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.51 0-2.91-.49-4.06-1.3l-1.42 1.44C8.04 20.3 9.94 21 12 21c4.97 0 9-4.03 9-9s-4.03-9-9-9z')
+
+
+            /*<svg class="mud-icon-root mud-svg-icon mud-inherit-text mud-icon-size-medium" focusable="false" viewBox="0 0 24 24" aria-hidden="true">
+            <title>SettingsBackupRestore</title><!--!-->
+            <path d="M0 0h24v24H0z" fill="none">            </path>
+            <path d="M14 12c0-1.1-.9-2-2-2s-2 .9-2 2 .9 2 2 2 2-.9 2-2zm-2-9c-4.97 0-9 4.03-9 9H0l4 4 4-4H5c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.51 0-2.91-.49-4.06-1.3l-1.42 1.44C8.04 20.3 9.94 21 12 21c4.97 0 9-4.03 9-9s-4.03-9-9-9z"></path>
+            </svg>*/
+
+        this.schedule = this.wrapper
+            .append('div')
+            .classed('schedule', true)
+            .style({
+                'white-space': 'pre'
             });
 
         this.svg = <d3.Selection<SVGElement>>(<unknown>this.wrapper
@@ -85,26 +128,29 @@ export class Visual implements IVisual {
                 'grid-area': '2 / 2 / 2 / 2'
             }));
 
-        this.schedule = this.wrapper
-            .append('div')
-            .classed('schedule', true)
-            .style({
-                'white-space': 'pre'
-            });
+        this.svgGroup = this.svg
+            .append('g')
+            .classed('svgGroup', true);
 
-        this.formGroup = this.svg
+        this.formGroup = this.svgGroup
             .append('g')
             .classed('formGroup', true);
 
-        this.textGroup = this.svg
+        this.textGroup = this.svgGroup
             .append('g')
             .classed('textGroup', true);
+
+
+        let zoom = d3.behavior.zoom().on('zoom', () => {
+            let zoomEvent = <d3.ZoomEvent>d3.event;
+            this.svgGroup.attr('transform', `scale(${zoomEvent.scale}) translate(${zoomEvent.translate})`)
+        });
+        this.svg.call(zoom);
     }
 
     public update(options: VisualUpdateOptions) {
-
         this.settings = Visual.parseSettings(options && options.dataViews && options.dataViews[0]);
-        let viewModel = this.getViewModel(options);
+        this.viewModel = this.getViewModel(options);
         let width = Math.floor(options.viewport.width);
         let height = Math.floor(options.viewport.height);
 
@@ -116,7 +162,7 @@ export class Visual implements IVisual {
             ? height - this.settings.Schedule.scheduleHeight - 20
             : height;
 
-        viewModel.ViewBoxHandler = new ViewBoxHandler(widthAvailable, heightAvailable);
+        this.viewModel.ViewBoxHandler = new ViewBoxHandler(widthAvailable, heightAvailable);
         this.wrapper.style({
             width: `${width}px`,
             height: `${height}px`
@@ -134,162 +180,13 @@ export class Visual implements IVisual {
             'margin': this.settings.Schedule.show ? this.gridMargin(this.settings.Schedule.placement) : null,
         })
 
-        this.generateForms(viewModel);
-        this.generateSchedule(viewModel);
+        this.generateForms();
+        this.generateSchedule();
 
-        viewModel.crop();
+        this.viewModel.crop();
         this.formGroup.attr({
-            'transform': `scale(${viewModel.ViewBoxHandler.Scale}) translate(${viewModel.ViewBoxHandler.TranslateX},${viewModel.ViewBoxHandler.TranslateY})`
+            'transform': `scale(${this.viewModel.ViewBoxHandler.Scale}) translate(${this.viewModel.ViewBoxHandler.TranslateX},${this.viewModel.ViewBoxHandler.TranslateY})`
         })
-
-
-    }
-
-    private generateText(viewModel: IViewModel) {
-        if (this.settings.Label.show) {
-            let texts = this.textGroup
-                .selectAll('text')
-                .data(viewModel.Forms);
-
-            texts.enter()
-                .append('text');
-
-            texts
-                .attr({
-                    'x': d => (d.Center[0] + viewModel.ViewBoxHandler.TranslateX) * viewModel.ViewBoxHandler.Scale,
-                    'y': d => (d.Center[1] + viewModel.ViewBoxHandler.TranslateY) * viewModel.ViewBoxHandler.Scale
-                })
-                .style({
-                    'font-size': pixelConverter.fromPointToPixel(this.settings.Label.fontSize),
-                    'font-family': this.settings.Label.fontFamily,
-                    'fill': this.settings.Label.fontColor,
-                    'text-anchor': this.settings.Label.alignment(this.settings.Label.textAlignment)
-                })
-                .text(d => d.Label)
-
-            texts.exit();
-        } else {
-            this.textGroup
-                .selectAll('text')
-                .remove()
-        }
-    }
-
-    private generateForms(viewModel: IViewModel) {
-        let forms = this.formGroup
-            .selectAll('path')
-            .data(viewModel.Forms);
-
-
-        forms.enter()
-            .append('path');
-
-        forms
-            .attr({
-                d: d => d.Data,
-                id: d => d.Id
-            })
-            .style({
-                'fill': d => this.getColor(viewModel, d),
-                'fill-opacity': d => viewModel.IsHighlighted
-                    ? d.Highlighted
-                        ? 1.0
-                        : 0.5
-                    : 1.0
-            })
-            .on('click', (d) => {
-                this.selectionManager.select(d.Identity)
-                    .then(ids => {
-                        forms.style({
-                            'fill-opacity': ids.length > 0
-                                ? d => ids.indexOf(d.Identity) >= 0
-                                    ? 1.0
-                                    : 0.5
-                                : 1.0,
-                            'fill': ids.length > 0
-                                ? d => ids.indexOf(d.Identity) >= 0
-                                    ? this.settings.Color.Highlight
-                                    : this.settings.Color.Basic
-                                : this.settings.Color.Basic
-                        })
-                    })
-            })
-            .on('mouseover', (d) => {
-                let mouse = d3.mouse(this.svg.node());
-                this.host.tooltipService.show({
-                    dataItems: d.Tooltip,
-                    identities: [d.Identity],
-                    coordinates: mouse,
-                    isTouchEvent: false
-                })
-            })
-            .on('mousemove', (d) => {
-                let mouse = d3.mouse(this.svg.node());
-                this.host.tooltipService.move({
-                    dataItems: d.Tooltip,
-                    identities: [d.Identity],
-                    coordinates: mouse,
-                    isTouchEvent: false
-                })
-            });
-
-        forms.exit().remove();
-    }
-
-    private generateSchedule(viewModel: IViewModel) {
-
-        this.schedule
-            .selectAll('div')
-            .remove();
-        if (!this.settings.Schedule.show)
-            return;
-
-        let values = viewModel.Forms.filter((v, i, a) => a.findIndex(t => (t.ConcactValue === v.ConcactValue)) === i)
-
-
-        let forms = this.schedule
-            .selectAll('div')
-            .data(values);
-
-        let div = forms.enter()
-            .append('div')
-            .style({
-                'margin': '10px 5px',
-                'display': 'flex',
-                'align-items': 'center'
-            });
-
-
-        div.append('svg')
-            .attr({
-                'width': '20px',
-                'height': '20px',
-                'viewvox': '0 0 20 20'
-            })
-            .style({
-                'margin': '2px',
-                'margin-right': '10px'
-            })
-            .append('circle')
-            .attr({
-                'cx': '10',
-                'cy': '10',
-                'r': '7',
-                'fill': (i) => this.getColor(viewModel, i),
-                'stroke': 'black',
-                'stroke-width': '1'
-
-            });
-
-        div.append('p')
-            .text(i => i.ConcactValue2)
-            .style({
-                'font-size': `${pixelConverter.fromPointToPixel(this.settings.Schedule.fontSize)}px`,
-                'font-family': this.settings.Schedule.fontFamily,
-                'color': this.settings.Schedule.fontColor,
-            });
-
-        forms.exit().remove();
 
     }
 
@@ -363,12 +260,164 @@ export class Visual implements IVisual {
         return viewModel;
     }
 
-    private getColor(viewModel: IViewModel, data: IForm): string {
-        debugger
-        if (viewModel.IsColored) {
+    private generateText(viewModel: IViewModel) {
+        if (this.settings.Label.show) {
+            let texts = this.textGroup
+                .selectAll('text')
+                .data(viewModel.Forms);
+
+            texts.enter()
+                .append('text');
+
+            texts
+                .attr({
+                    'x': d => (d.Center[0] + viewModel.ViewBoxHandler.TranslateX) * viewModel.ViewBoxHandler.Scale,
+                    'y': d => (d.Center[1] + viewModel.ViewBoxHandler.TranslateY) * viewModel.ViewBoxHandler.Scale
+                })
+                .style({
+                    'font-size': pixelConverter.fromPointToPixel(this.settings.Label.fontSize),
+                    'font-family': this.settings.Label.fontFamily,
+                    'fill': this.settings.Label.fontColor,
+                    'text-anchor': this.settings.Label.alignment(this.settings.Label.textAlignment)
+                })
+                .text(d => d.Label)
+
+            texts.exit();
+        } else {
+            this.textGroup
+                .selectAll('text')
+                .remove()
+        }
+    }
+
+
+    private generateForms() {
+        let forms = this.formGroup
+            .selectAll('path')
+            .data(this.viewModel.Forms);
+
+        forms.enter()
+            .append('path');
+
+        forms
+            .attr({
+                d: d => d.Data,
+                id: d => d.Id
+            })
+            .style({
+                'fill': d => this.getColor(d),
+                'fill-opacity': d => this.viewModel.IsHighlighted
+                    ? d.Highlighted
+                        ? 1.0
+                        : 0.5
+                    : 1.0
+            })
+            .on('click', (d) => {
+                this.selectionManager.select(d.Identity)
+                    .then(ids => {
+
+                        forms.style({
+
+                            'fill-opacity': ids.length > 0
+                                ? d => ids.indexOf(d.Identity) >= 0
+                                    ? 1.0
+                                    : 0.5
+                                : 1.0,
+
+                            'fill': ids.length > 0
+                                ? d => ids.indexOf(d.Identity) >= 0
+                                    ? this.settings.Color.Highlight
+                                    : this.settings.Color.Basic
+                                : d => this.getColor(d)
+                        })
+                    })
+            })
+            .on('mouseover', (d) => {
+                let mouse = d3.mouse(this.svg.node());
+                this.host.tooltipService.show({
+                    dataItems: d.Tooltip,
+                    identities: [d.Identity],
+                    coordinates: mouse,
+                    isTouchEvent: false
+                })
+            })
+            .on('mousemove', (d) => {
+                let mouse = d3.mouse(this.svg.node());
+                this.host.tooltipService.move({
+                    dataItems: d.Tooltip,
+                    identities: [d.Identity],
+                    coordinates: mouse,
+                    isTouchEvent: false
+                })
+            });
+
+        forms.exit().remove();
+    }
+
+    private generateSchedule() {
+
+        this.schedule
+            .selectAll('div')
+            .remove();
+        if (!this.settings.Schedule.show)
+            return;
+
+        let values = this.viewModel.Forms.filter((v, i, a) => a.findIndex(t => (t.ConcactValue === v.ConcactValue)) === i)
+
+
+        let forms = this.schedule
+            .selectAll('div')
+            .data(values);
+
+        let div = forms.enter()
+            .append('div')
+            .style({
+                'margin': '10px 5px',
+                'display': 'flex',
+                'align-items': 'center'
+            });
+
+
+        div.append('svg')
+            .attr({
+                'width': '20px',
+                'height': '20px',
+                'viewvox': '0 0 20 20'
+            })
+            .style({
+                'margin': '2px',
+                'margin-right': '10px'
+            })
+            .append('circle')
+            .attr({
+                'cx': '10',
+                'cy': '10',
+                'r': '7',
+                'fill': (i) => this.getColor(i),
+                'stroke': 'black',
+                'stroke-width': '1'
+
+            });
+
+        div.append('p')
+            .text(i => i.ConcactValue2)
+            .style({
+                'font-size': `${pixelConverter.fromPointToPixel(this.settings.Schedule.fontSize)}px`,
+                'font-family': this.settings.Schedule.fontFamily,
+                'color': this.settings.Schedule.fontColor,
+            });
+
+        forms.exit().remove();
+
+    }
+
+
+
+    private getColor(data: IForm): string {
+        if (this.viewModel.IsColored) {
             return data.Color
         }
-        else if (viewModel.IsHighlighted) {
+        else if (this.viewModel.IsHighlighted) {
             return data.Highlighted
                 ? this.settings.Color.Highlight
                 : this.settings.Color.Basic

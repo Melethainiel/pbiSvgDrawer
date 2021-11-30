@@ -26,14 +26,14 @@
 
 "use strict";
 
-import {dataViewObjectsParser} from "powerbi-visuals-utils-dataviewutils";
+import { dataViewObjectsParser } from "powerbi-visuals-utils-dataviewutils";
 import DataViewObjectsParser = dataViewObjectsParser.DataViewObjectsParser;
 
 // tslint:disable-next-line:export-name
 export class VisualSettings extends DataViewObjectsParser {
-    public Color : ColorSetting = new ColorSetting();
-    public Label : LabelSetting = new LabelSetting();
-    public Schedule : ScheduleSettings = new ScheduleSettings();
+    public Color: ColorSetting = new ColorSetting();
+    public Label: LabelSetting = new LabelSetting();
+    public Schedule: ScheduleSettings = new ScheduleSettings();
 }
 
 export class ColorSetting {
@@ -42,28 +42,30 @@ export class ColorSetting {
     Colored: boolean = false;
 }
 
-export class ScheduleSettings{
+export class ScheduleSettings {
     show: boolean = false;
-    fontSize: number = 28;
+    fontSize: number = 15;
     fontFamily: string = "Segoe UI";
     fontColor: string = "#252423";
-    scheduleWidth: number = 100;
+    scheduleWidth: number = 250;
+    scheduleHeight: number = 250;
+    placement: number = 1;
 }
 
-export class LabelSetting{
+export class LabelSetting {
     show: boolean = false;
     fontSize: number = 12;
     fontFamily: string = "Segoe UI";
     fontColor: string = "#252423";
     textAlignment: string = "middle";
-    public alignment(value : string): string {
+    public alignment(value: string): string {
         debugger
-        switch (value){
-            case "left" :
+        switch (value) {
+            case "left":
                 return "end";
-            case "center" :
+            case "center":
                 return "middle";
-            case "right" :
+            case "right":
                 return "start";
         }
     }

@@ -6,7 +6,7 @@
 *  MIT License
 *
 *  Permission is hereby granted, free of charge, to any person obtaining a copy
-*  of this software and associated documentation files (the ""Software""), to deal
+*  of this software and associated documentation files (the ''Software''), to deal
 *  in the Software without restriction, including without limitation the rights
 *  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 *  copies of the Software, and to permit persons to whom the Software is
@@ -23,12 +23,12 @@
 *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 *  THE SOFTWARE.
 */
-"use strict";
+'use strict';
 
-import "core-js/stable";
-import "./../style/visual.less";
+import 'core-js/stable';
+import './../style/visual.less';
 // tslint:disable-next-line:import-name
-import powerbi from "powerbi-visuals-api";
+import powerbi from 'powerbi-visuals-api';
 import VisualConstructorOptions = powerbi.extensibility.visual.VisualConstructorOptions;
 import VisualUpdateOptions = powerbi.extensibility.visual.VisualUpdateOptions;
 import IVisual = powerbi.extensibility.visual.IVisual;
@@ -37,15 +37,15 @@ import VisualObjectInstance = powerbi.VisualObjectInstance;
 import DataView = powerbi.DataView;
 import VisualObjectInstanceEnumerationObject = powerbi.VisualObjectInstanceEnumerationObject;
 import ISelectionManager = powerbi.extensibility.ISelectionManager;
-import { VisualSettings } from "./settings";
-import { pixelConverter } from "powerbi-visuals-utils-typeutils";
+import { VisualSettings } from './settings';
+import { pixelConverter } from 'powerbi-visuals-utils-typeutils';
 
-import * as d3 from "d3";
-import { ViewModel } from "./models/visualViewModel";
-import { ViewBoxHandler } from "./models/ViewBoxHandler";
-import { Form } from "./models/Form";
-import { IForm } from "./interfaces/IForm";
-import { IViewModel } from "./interfaces/IViewModel";
+import * as d3 from 'd3';
+import { ViewModel } from './models/visualViewModel';
+import { ViewBoxHandler } from './models/ViewBoxHandler';
+import { Form } from './models/Form';
+import { IForm } from './interfaces/IForm';
+import { IViewModel } from './interfaces/IViewModel';
 
 
 export class Visual implements IVisual {
@@ -69,27 +69,27 @@ export class Visual implements IVisual {
             .append('div')
             .classed('wrapper', true)
             .style({
-                "display": "grid",
-                "grid-template-columns": "auto 1fr auto",
-                "grid-template-rows": "auto 1fr auto"
+                'display': 'grid',
+                'grid-template-columns': 'auto 1fr auto',
+                'grid-template-rows': 'auto 1fr auto'
             });
 
         this.svg = <d3.Selection<SVGElement>>(<unknown>this.wrapper
             .append('svg')
             .classed('view', true)
             .attr({
-                "width": "100%",
-                "height": "100%",
+                'width': '100%',
+                'height': '100%',
             })
             .style({
-                "grid-area": "2 / 2 / 2 / 2"
+                'grid-area': '2 / 2 / 2 / 2'
             }));
 
         this.schedule = this.wrapper
             .append('div')
             .classed('schedule', true)
             .style({
-                "grid-area": "2 / 3 / 2 / 3"
+                'white-space': 'pre'
             });
 
         this.formGroup = this.svg
@@ -108,16 +108,31 @@ export class Visual implements IVisual {
         let width = Math.floor(options.viewport.width);
         let height = Math.floor(options.viewport.height);
 
-        let widthAvailable = this.settings.Schedule.show
-            ? width - this.settings.Schedule.scheduleWidth
+        let widthAvailable = this.settings.Schedule.show && (this.settings.Schedule.placement == 0 || this.settings.Schedule.placement == 1)
+            ? width - this.settings.Schedule.scheduleWidth - 20
             : width;
 
-        viewModel.ViewBoxHandler = new ViewBoxHandler(widthAvailable, height);
+        let heightAvailable = this.settings.Schedule.show && (this.settings.Schedule.placement == 2 || this.settings.Schedule.placement == 3)
+            ? height - this.settings.Schedule.scheduleHeight - 20
+            : height;
+
+        viewModel.ViewBoxHandler = new ViewBoxHandler(widthAvailable, heightAvailable);
         this.wrapper.style({
             width: `${width}px`,
             height: `${height}px`
         });
 
+
+        this.schedule.style({
+            'overflow-y': 'auto',
+            'overflow-x': 'clip',
+            'grid-area': this.gridArea(this.settings.Schedule.placement),
+            'display': this.gridDisplay(this.settings.Schedule.placement),
+            'flex-wrap': this.gridFlexWrap(this.settings.Schedule.placement),
+            'width': this.settings.Schedule.show ? this.gridWidth(this.settings.Schedule.placement) : null,
+            'height': this.settings.Schedule.show ? this.gridHeight(this.settings.Schedule.placement) : null,
+            'margin': this.settings.Schedule.show ? this.gridMargin(this.settings.Schedule.placement) : null,
+        })
 
         this.generateForms(viewModel);
         this.generateSchedule(viewModel);
@@ -224,27 +239,50 @@ export class Visual implements IVisual {
     private generateSchedule(viewModel: IViewModel) {
 
         this.schedule
-            .style({
-                "width": null
-            })
             .selectAll('div')
             .remove();
         if (!this.settings.Schedule.show)
             return;
 
-        let values = viewModel.Forms.map(i => i.ConcactValue).filter((v, i, a) => a.findIndex(t => (t === v)) === i)
+        let values = viewModel.Forms.filter((v, i, a) => a.findIndex(t => (t.ConcactValue === v.ConcactValue)) === i)
 
 
         let forms = this.schedule
-            .style({
-                "width": `${this.settings.Schedule.scheduleWidth}px`,
-            })
             .selectAll('div')
             .data(values);
 
-        let p = forms.enter()
+        let div = forms.enter()
             .append('div')
-            .text(i => i)
+            .style({
+                'margin': '10px 5px',
+                'display': 'flex',
+                'align-items': 'center'
+            });
+
+
+        div.append('svg')
+            .attr({
+                'width': '20px',
+                'height': '20px',
+                'viewvox': '0 0 20 20'
+            })
+            .style({
+                'margin': '2px',
+                'margin-right': '10px'
+            })
+            .append('circle')
+            .attr({
+                'cx': '10',
+                'cy': '10',
+                'r': '7',
+                'fill': (i) => this.getColor(viewModel, i),
+                'stroke': 'black',
+                'stroke-width': '1'
+
+            });
+
+        div.append('p')
+            .text(i => i.ConcactValue2)
             .style({
                 'font-size': `${pixelConverter.fromPointToPixel(this.settings.Schedule.fontSize)}px`,
                 'font-family': this.settings.Schedule.fontFamily,
@@ -294,7 +332,7 @@ export class Visual implements IVisual {
                     .createSelectionId();
                 form.Label = labelValues
                     ? <string>labelValues[i]
-                    : "";
+                    : '';
                 form.Tooltip = [{
                     displayName: categoryColumns,
                     value: form.Id
@@ -303,7 +341,7 @@ export class Visual implements IVisual {
                 viewModel.Forms.push(form);
             }
 
-            let t = parameterValues ? <string>parameterValues[i] : "#error";
+            let t = parameterValues ? <string>parameterValues[i] : '#error';
             let isHighlighted = highlights
                 ? !!highlights[i]
                 : false;
@@ -312,7 +350,7 @@ export class Visual implements IVisual {
 
             form.Values.push({
                 Value: t,
-                Color: ""
+                Color: ''
             })
         }
 
@@ -340,6 +378,86 @@ export class Visual implements IVisual {
         }
 
 
+    }
+
+    public gridArea(placement: number): string {
+        switch (placement) {
+            case 0:
+                return '2 / 1 / 2 / 1';
+            case 1:
+                return '2 / 3 / 2 / 3';
+            case 2:
+                return '1 / 1 / 1 / 3';
+            case 3:
+                return '3 / 1 / 3 / 3';
+            default:
+                break;
+        }
+    }
+
+    public gridDisplay(placement: number): string {
+        switch (placement) {
+            case 0:
+            case 1:
+                return null;
+            case 2:
+            case 3:
+                return 'flex';
+            default:
+                break;
+        }
+    }
+
+    public gridFlexWrap(placement: number): string {
+        switch (placement) {
+            case 0:
+            case 1:
+                return null;
+            case 2:
+            case 3:
+                return 'wrap';
+            default:
+                break;
+        }
+    }
+
+    public gridWidth(placement: number): string {
+        switch (placement) {
+            case 0:
+            case 1:
+                return `${this.settings.Schedule.scheduleWidth}px`;
+            case 2:
+            case 3:
+                return null;
+            default:
+                break;
+        }
+    }
+
+    public gridHeight(placement: number): string {
+        switch (placement) {
+            case 0:
+            case 1:
+                return null;
+            case 2:
+            case 3:
+                return `${this.settings.Schedule.scheduleHeight}px`;
+            default:
+                break;
+        }
+    }
+
+    public gridMargin(placement: number): string {
+        switch (placement) {
+            case 0:
+            case 1:
+                return '0 10px';
+            case 2:
+            case 3:
+                return '10px 0';
+            default:
+                break;
+        }
     }
 
     private static parseSettings(dataView: DataView): VisualSettings {

@@ -1,5 +1,5 @@
 {
-  "supportsHighlight" : true,
+  "supportsHighlight": true,
   "dataRoles": [
     {
       "displayName": "Paths",
@@ -142,7 +142,40 @@
         "scheduleWidth": {
           "displayName": "Largeur",
           "type": {
-            "numeric" : true
+            "numeric": true
+          }
+        },
+        "scheduleHeight": {
+          "displayName": "Hauteur",
+          "type": {
+            "numeric": true
+          }
+        },
+        "placement": {
+          "displayName": "Placement",
+          "type": {
+            "enumeration": [
+              {
+                "displayNameKey": "left",
+                "displayName": "Gauche",
+                "value": "0"
+              },
+              {
+                "displayNameKey": "right",
+                "displayName": "Droite",
+                "value": "1"
+              },
+              {
+                "displayNameKey": "top",
+                "displayName": "Haut",
+                "value": "2"
+              },
+              {
+                "displayNameKey": "bottom",
+                "displayName": "Bas",
+                "value": "3"
+              }
+            ]
           }
         }
       }
@@ -174,13 +207,20 @@
           "group": {
             "by": "Series",
             "select": [
-              { "bind": { "to": "target" } },
-              { "bind": { "to": "text" } }
+              {
+                "bind": {
+                  "to": "target"
+                }
+              },
+              {
+                "bind": {
+                  "to": "text"
+                }
+              }
             ]
           }
         }
       }
-
     }
   ],
   "tooltips": {

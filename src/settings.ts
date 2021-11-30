@@ -31,19 +31,25 @@ import DataViewObjectsParser = dataViewObjectsParser.DataViewObjectsParser;
 
 // tslint:disable-next-line:export-name
 export class VisualSettings extends DataViewObjectsParser {
-    public Color : IColorSetting = new ColorSetting();
+    public Color : ColorSetting = new ColorSetting();
     public Label : LabelSetting = new LabelSetting();
+    public Schedule : ScheduleSettings = new ScheduleSettings();
 }
 
-interface IColorSetting {
-    Basic: string;
-    Highlight: string;
-}
-
-export class ColorSetting implements IColorSetting{
+export class ColorSetting {
     Basic: string = "#168980";
     Highlight: string = "#B59525";
+    Colored: boolean = false;
 }
+
+export class ScheduleSettings{
+    show: boolean = false;
+    fontSize: number = 28;
+    fontFamily: string = "Segoe UI";
+    fontColor: string = "#252423";
+    scheduleWidth: number = 100;
+}
+
 export class LabelSetting{
     show: boolean = false;
     fontSize: number = 12;

@@ -17,6 +17,12 @@
     },
     "files": [
         "./src/visual.ts",
-        "node_modules/@types/d3/index.d.ts"
+        "node_modules/@types/d3/index.d.ts",
+        "./src/interfaces/IValue.ts",
+        "./src/interfaces/IForm.ts",
+        "./src/interfaces/IViewModel.ts",
+        "./src/models/ViewBoxHandler.ts",
+        "./src/models/visualViewModel.ts",
+        "./src/models/Form.ts"
     ]
 }

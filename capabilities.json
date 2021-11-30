@@ -12,12 +12,17 @@
       "kind": "Grouping"
     },
     {
+      "displayName": "ParameterValues",
+      "name": "parameterValues",
+      "kind": "Grouping"
+    },
+    {
       "displayName": "Selection",
       "name": "target",
       "kind": "Measure"
     },
     {
-      "displayName": "Text",
+      "displayName": "Text (DO NOT USE)",
       "name": "text",
       "kind": "Measure"
     }
@@ -45,11 +50,17 @@
               }
             }
           }
+        },
+        "Colored": {
+          "displayName": "Repérage",
+          "type": {
+            "bool": true
+          }
         }
       }
     },
     "Label": {
-      "displayName": "Texte",
+      "displayName": "Text",
       "properties": {
         "show": {
           "displayName": "Show",
@@ -92,6 +103,49 @@
           }
         }
       }
+    },
+    "Schedule": {
+      "displayName": "Nomenclature",
+      "properties": {
+        "show": {
+          "displayName": "Show",
+          "type": {
+            "bool": true
+          }
+        },
+        "fontSize": {
+          "displayName": "Taille du texte",
+          "type": {
+            "formatting": {
+              "fontSize": true
+            }
+          }
+        },
+        "fontFamily": {
+          "displayName": "Famille de police",
+          "type": {
+            "formatting": {
+              "fontFamily": true
+            }
+          }
+        },
+        "fontColor": {
+          "displayName": "Couleur de police",
+          "type": {
+            "fill": {
+              "solid": {
+                "color": true
+              }
+            }
+          }
+        },
+        "scheduleWidth": {
+          "displayName": "Largeur",
+          "type": {
+            "numeric" : true
+          }
+        }
+      }
     }
   },
   "dataViewMappings": [
@@ -107,6 +161,11 @@
             {
               "for": {
                 "in": "identifier"
+              }
+            },
+            {
+              "for": {
+                "in": "parameterValues"
               }
             }
           ]

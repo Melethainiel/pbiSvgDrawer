@@ -37,57 +37,95 @@ import VisualObjectInstance = powerbi.VisualObjectInstance;
 import DataView = powerbi.DataView;
 import VisualObjectInstanceEnumerationObject = powerbi.VisualObjectInstanceEnumerationObject;
 import ISelectionManager = powerbi.extensibility.ISelectionManager;
-import {VisualSettings} from "./settings";
-import {pixelConverter} from "powerbi-visuals-utils-typeutils";
+import { VisualSettings } from "./settings";
+import { pixelConverter } from "powerbi-visuals-utils-typeutils";
 
 import * as d3 from "d3";
-import {IViewModel, Form, ViewModel} from "./visualViewModel";
+import { ViewModel } from "./models/visualViewModel";
+import { ViewBoxHandler } from "./models/ViewBoxHandler";
+import { Form } from "./models/Form";
+import { IForm } from "./interfaces/IForm";
+import { IViewModel } from "./interfaces/IViewModel";
 
 
 export class Visual implements IVisual {
     private settings: VisualSettings;
     private selectionManager: ISelectionManager;
     private svg: d3.Selection<SVGElement>;
+    private wrapper: d3.Selection<HTMLElement>;
+    private schedule: d3.Selection<HTMLElement>;
     private formGroup: d3.Selection<SVGElement>;
     private textGroup: d3.Selection<SVGElement>;
     private host: powerbi.extensibility.visual.IVisualHost;
 
     constructor(options: VisualConstructorOptions) {
         this.host = options.host;
-        this.selectionManager = options.host.createSelectionManager();
-        this.svg = d3.select(options.element)
-            .append('svg')
-            .classed('view', true);
-        this.formGroup = this.svg
-            .append('g')
-            .classed('formGroup', true);
-        this.textGroup = this.svg
-            .append('g')
-            .classed('textGroup', true);
-
+        this.createSkeleton(options);
         this.selectionManager = this.host.createSelectionManager();
     }
 
+    private createSkeleton(options: VisualConstructorOptions) {
+        this.wrapper = d3.select(options.element)
+            .append('div')
+            .classed('wrapper', true)
+            .style({
+                "display": "grid",
+                "grid-template-columns": "auto 1fr auto",
+                "grid-template-rows": "auto 1fr auto"
+            });
+
+        this.svg = <d3.Selection<SVGElement>>(<unknown>this.wrapper
+            .append('svg')
+            .classed('view', true)
+            .attr({
+                "width": "100%",
+                "height": "100%",
+            })
+            .style({
+                "grid-area": "2 / 2 / 2 / 2"
+            }));
+
+        this.schedule = this.wrapper
+            .append('div')
+            .classed('schedule', true)
+            .style({
+                "grid-area": "2 / 3 / 2 / 3"
+            });
+
+        this.formGroup = this.svg
+            .append('g')
+            .classed('formGroup', true);
+
+        this.textGroup = this.svg
+            .append('g')
+            .classed('textGroup', true);
+    }
+
     public update(options: VisualUpdateOptions) {
+
         this.settings = Visual.parseSettings(options && options.dataViews && options.dataViews[0]);
         let viewModel = this.getViewModel(options);
-        let width = options.viewport.width;
-        let height = options.viewport.height;
+        let width = Math.floor(options.viewport.width);
+        let height = Math.floor(options.viewport.height);
 
-        this.svg.attr({
-            width: width,
-            height: height,
-        })
+        let widthAvailable = this.settings.Schedule.show
+            ? width - this.settings.Schedule.scheduleWidth
+            : width;
 
-        viewModel.crop(width, height);
+        viewModel.ViewBoxHandler = new ViewBoxHandler(widthAvailable, height);
+        this.wrapper.style({
+            width: `${width}px`,
+            height: `${height}px`
+        });
 
-        this.formGroup.attr({
-            'transform': `scale(${viewModel.Scale}) translate(${viewModel.TranslateX},${viewModel.TranslateY})`
-        })
-        debugger
 
         this.generateForms(viewModel);
-        this.generateText(viewModel);
+        this.generateSchedule(viewModel);
+
+        viewModel.crop();
+        this.formGroup.attr({
+            'transform': `scale(${viewModel.ViewBoxHandler.Scale}) translate(${viewModel.ViewBoxHandler.TranslateX},${viewModel.ViewBoxHandler.TranslateY})`
+        })
 
 
     }
@@ -103,18 +141,18 @@ export class Visual implements IVisual {
 
             texts
                 .attr({
-                    'x': d => (d.Center[0] + viewModel.TranslateX) * viewModel.Scale,
-                    'y': d => (d.Center[1] + viewModel.TranslateY) * viewModel.Scale
+                    'x': d => (d.Center[0] + viewModel.ViewBoxHandler.TranslateX) * viewModel.ViewBoxHandler.Scale,
+                    'y': d => (d.Center[1] + viewModel.ViewBoxHandler.TranslateY) * viewModel.ViewBoxHandler.Scale
                 })
                 .style({
                     'font-size': pixelConverter.fromPointToPixel(this.settings.Label.fontSize),
-                    'font-family' :  this.settings.Label.fontFamily,
-                    'fill' : this.settings.Label.fontColor,
+                    'font-family': this.settings.Label.fontFamily,
+                    'fill': this.settings.Label.fontColor,
                     'text-anchor': this.settings.Label.alignment(this.settings.Label.textAlignment)
                 })
                 .text(d => d.Label)
 
-            texts.exit().remove();
+            texts.exit();
         } else {
             this.textGroup
                 .selectAll('text')
@@ -137,12 +175,8 @@ export class Visual implements IVisual {
                 id: d => d.Id
             })
             .style({
-                'fill': d => viewModel.Highlights
-                    ? d.Highlighted
-                        ? this.settings.Color.Highlight
-                        : this.settings.Color.Basic
-                    : this.settings.Color.Basic,
-                'fill-opacity': d => viewModel.Highlights
+                'fill': d => this.getColor(viewModel, d),
+                'fill-opacity': d => viewModel.IsHighlighted
                     ? d.Highlighted
                         ? 1.0
                         : 0.5
@@ -187,8 +221,43 @@ export class Visual implements IVisual {
         forms.exit().remove();
     }
 
+    private generateSchedule(viewModel: IViewModel) {
+
+        this.schedule
+            .style({
+                "width": null
+            })
+            .selectAll('div')
+            .remove();
+        if (!this.settings.Schedule.show)
+            return;
+
+        let values = viewModel.Forms.map(i => i.ConcactValue).filter((v, i, a) => a.findIndex(t => (t === v)) === i)
+
+
+        let forms = this.schedule
+            .style({
+                "width": `${this.settings.Schedule.scheduleWidth}px`,
+            })
+            .selectAll('div')
+            .data(values);
+
+        let p = forms.enter()
+            .append('div')
+            .text(i => i)
+            .style({
+                'font-size': `${pixelConverter.fromPointToPixel(this.settings.Schedule.fontSize)}px`,
+                'font-family': this.settings.Schedule.fontFamily,
+                'color': this.settings.Schedule.fontColor,
+            });
+
+        forms.exit().remove();
+
+    }
+
     private getViewModel(options: VisualUpdateOptions): IViewModel {
-        let viewModel = new ViewModel()
+        let viewModel = new ViewModel();
+        viewModel.IsColored = this.settings.Color.Colored;
 
         let dv = options.dataViews;
         if (!dv
@@ -197,13 +266,15 @@ export class Visual implements IVisual {
             || !dv[0].metadata
             || !dv[0].categorical.categories
             || !dv[0].categorical.values
-            || dv[0].categorical.categories.length != 2) {
+            || dv[0].categorical.categories.length < 2) {
             return viewModel
         }
 
-        let data = dv[0].categorical.categories[0].values;
+        let path = dv[0].categorical.categories[0].values;
         let idCategories = dv[0].categorical.categories[1];
         let ids = idCategories.values;
+        let parameters = dv[0].categorical.categories[2];
+        let parameterValues = parameters ? parameters.values : undefined;
 
         let highlights = dv[0].categorical.values[0].highlights;
         let labels = dv[0].categorical.values[1];
@@ -214,29 +285,62 @@ export class Visual implements IVisual {
 
         for (let i = 0, len = ids.length; i < len; i++) {
 
-            let form = Form.PARSE(<string>ids[i], <string>data[i]);
-            form.Identity = this.host.createSelectionIdBuilder()
-                .withCategory(idCategories, i)
-                .createSelectionId();
-            form.Highlighted = highlights
+            let form = viewModel.Forms.find(j => j.Id == ids[i])
+            if (!form) {
+                form = Form.PARSE(<string>ids[i], <string>path[i]);
+
+                form.Identity = this.host.createSelectionIdBuilder()
+                    .withCategory(idCategories, i)
+                    .createSelectionId();
+                form.Label = labelValues
+                    ? <string>labelValues[i]
+                    : "";
+                form.Tooltip = [{
+                    displayName: categoryColumns,
+                    value: form.Id
+                }]
+
+                viewModel.Forms.push(form);
+            }
+
+            let t = parameterValues ? <string>parameterValues[i] : "#error";
+            let isHighlighted = highlights
                 ? !!highlights[i]
                 : false;
-            form.Label = labelValues
-                ? <string>labelValues[i]
-                : "";
-            form.Tooltip = [{
-                displayName: categoryColumns,
-                value: form.Id
-            }]
 
-            viewModel.Forms.push(form);
+            form.Highlighted = form.Highlighted || isHighlighted;
 
+            form.Values.push({
+                Value: t,
+                Color: ""
+            })
         }
-        viewModel.Highlights = viewModel.Forms.filter(d => d.Highlighted).length > 0;
+
+        viewModel.Forms.forEach(element => {
+            element.Color = this.host.colorPalette.getColor(element.ConcactValue).value;
+        });
+
+        viewModel.IsHighlighted = viewModel.Forms.filter(d => d.Highlighted).length > 0;
 
         return viewModel;
     }
 
+    private getColor(viewModel: IViewModel, data: IForm): string {
+        debugger
+        if (viewModel.IsColored) {
+            return data.Color
+        }
+        else if (viewModel.IsHighlighted) {
+            return data.Highlighted
+                ? this.settings.Color.Highlight
+                : this.settings.Color.Basic
+        }
+        else {
+            return this.settings.Color.Basic;
+        }
+
+
+    }
 
     private static parseSettings(dataView: DataView): VisualSettings {
         return <VisualSettings>VisualSettings.parse(dataView);

@@ -2,14 +2,14 @@
   "visual": {
     "name": "pbiSvgDrawer",
     "displayName": "PbiSvgDrawer",
-    "guid": "pbiSvgDrawerAE55660EC7B343C087210200AD9912BA",
+    "guid": "pbiSvgDrawer",
     "visualClassName": "Visual",
-    "version": "1.0.0",
+    "version": "2.0.3",
     "description": "Display SVG from path data",
     "supportUrl": "t.galland@bouygues-construction.com",
     "gitHubUrl": ""
   },
-  "apiVersion": "4.0.0",
+  "apiVersion": "3.8.4",
   "author": {
     "name": "Thibaud Galland Demanneville",
     "email": "t.galland@bouygues-construction.com"

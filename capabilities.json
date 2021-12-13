@@ -52,7 +52,7 @@
           }
         },
         "Colored": {
-          "displayName": "Repérage",
+          "displayName": "Repérage automatique",
           "type": {
             "bool": true
           }

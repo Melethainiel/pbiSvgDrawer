@@ -37,6 +37,7 @@ import VisualObjectInstance = powerbi.VisualObjectInstance;
 import DataView = powerbi.DataView;
 import VisualObjectInstanceEnumerationObject = powerbi.VisualObjectInstanceEnumerationObject;
 import ISelectionManager = powerbi.extensibility.ISelectionManager;
+
 import { VisualSettings } from './settings';
 import { pixelConverter } from 'powerbi-visuals-utils-typeutils';
 
@@ -45,27 +46,27 @@ import { ViewModel } from './models/visualViewModel';
 import { ViewBoxHandler } from './models/ViewBoxHandler';
 import { Form } from './models/Form';
 import { IForm } from './interfaces/IForm';
+import { IValue } from './interfaces/IValue';
 import { IViewModel } from './interfaces/IViewModel';
 
-
 export class Visual implements IVisual {
+
     private settings: VisualSettings;
     private selectionManager: ISelectionManager;
     private viewModel: IViewModel;
     private svg: d3.Selection<SVGElement>;
     private wrapper: d3.Selection<HTMLElement>;
     private schedule: d3.Selection<HTMLElement>;
-    private button: d3.Selection<HTMLElement>;
     private svgGroup: d3.Selection<SVGElement>;
     private formGroup: d3.Selection<SVGElement>;
     private textGroup: d3.Selection<SVGElement>;
     private host: powerbi.extensibility.visual.IVisualHost;
 
     constructor(options: VisualConstructorOptions) {
+        debugger
         this.host = options.host;
         this.createSkeleton(options);
         this.selectionManager = this.host.createSelectionManager();
-
     }
 
     private createSkeleton(options: VisualConstructorOptions) {
@@ -78,37 +79,38 @@ export class Visual implements IVisual {
                 'grid-template-rows': 'auto 1fr auto'
             });
 
-        this.button = this.wrapper
+        this.wrapper
             .append('button')
             .on('click', () => {
                 this.svgGroup.attr('transform', null)
                 this.selectionManager.clear();
+                this.host.colorPalette.reset();
                 this.generateForms();
             })
             .style({
-                'position':'absolute',
-                'right':'25px',
-                'top':'15px',
-                'padding':'2',
-                'border':'0',
-                'border-radius':'5px'
+                'position': 'absolute',
+                'right': '25px',
+                'top': '15px',
+                'padding': '2',
+                'border': '0',
+                'border-radius': '5px'
             })
             .append('svg')
             .attr({
-                'viewBox':'0 0 24 24',
-                'color' : 'black',
-                'width':'24px',
-                'height':'24px'
+                'viewBox': '0 0 24 24',
+                'color': 'black',
+                'width': '24px',
+                'height': '24px'
             })
             .append('path')
             .attr('d', 'M14 12c0-1.1-.9-2-2-2s-2 .9-2 2 .9 2 2 2 2-.9 2-2zm-2-9c-4.97 0-9 4.03-9 9H0l4 4 4-4H5c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.51 0-2.91-.49-4.06-1.3l-1.42 1.44C8.04 20.3 9.94 21 12 21c4.97 0 9-4.03 9-9s-4.03-9-9-9z')
 
 
-            /*<svg class="mud-icon-root mud-svg-icon mud-inherit-text mud-icon-size-medium" focusable="false" viewBox="0 0 24 24" aria-hidden="true">
-            <title>SettingsBackupRestore</title><!--!-->
-            <path d="M0 0h24v24H0z" fill="none">            </path>
-            <path d="M14 12c0-1.1-.9-2-2-2s-2 .9-2 2 .9 2 2 2 2-.9 2-2zm-2-9c-4.97 0-9 4.03-9 9H0l4 4 4-4H5c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.51 0-2.91-.49-4.06-1.3l-1.42 1.44C8.04 20.3 9.94 21 12 21c4.97 0 9-4.03 9-9s-4.03-9-9-9z"></path>
-            </svg>*/
+        /*<svg class="mud-icon-root mud-svg-icon mud-inherit-text mud-icon-size-medium" focusable="false" viewBox="0 0 24 24" aria-hidden="true">
+        <title>SettingsBackupRestore</title><!--!-->
+        <path d="M0 0h24v24H0z" fill="none">            </path>
+        <path d="M14 12c0-1.1-.9-2-2-2s-2 .9-2 2 .9 2 2 2 2-.9 2-2zm-2-9c-4.97 0-9 4.03-9 9H0l4 4 4-4H5c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.51 0-2.91-.49-4.06-1.3l-1.42 1.44C8.04 20.3 9.94 21 12 21c4.97 0 9-4.03 9-9s-4.03-9-9-9z"></path>
+        </svg>*/
 
         this.schedule = this.wrapper
             .append('div')
@@ -174,6 +176,7 @@ export class Visual implements IVisual {
             'overflow-x': 'clip',
             'grid-area': this.gridArea(this.settings.Schedule.placement),
             'display': this.gridDisplay(this.settings.Schedule.placement),
+            'align-content': 'start',
             'flex-wrap': this.gridFlexWrap(this.settings.Schedule.placement),
             'width': this.settings.Schedule.show ? this.gridWidth(this.settings.Schedule.placement) : null,
             'height': this.settings.Schedule.show ? this.gridHeight(this.settings.Schedule.placement) : null,
@@ -193,6 +196,7 @@ export class Visual implements IVisual {
     private getViewModel(options: VisualUpdateOptions): IViewModel {
         let viewModel = new ViewModel();
         viewModel.IsColored = this.settings.Color.Colored;
+        debugger
 
         let dv = options.dataViews;
         if (!dv
@@ -205,22 +209,63 @@ export class Visual implements IVisual {
             return viewModel
         }
 
-        let path = dv[0].categorical.categories[0].values;
-        let idCategories = dv[0].categorical.categories[1];
+        let view = dv[0].categorical;
+        let categories = view.categories[0];
+
+        let path = categories.values;
+        let idCategories = view.categories[1];
         let ids = idCategories.values;
-        let parameters = dv[0].categorical.categories[2];
+        let parameters = view.categories[2];
         let parameterValues = parameters ? parameters.values : undefined;
 
-        let highlights = dv[0].categorical.values[0].highlights;
-        let labels = dv[0].categorical.values[1];
+        let highlights = view.values[0].highlights;
+        let labels = view.values[1];
         let labelValues = labels ? labels.values : undefined;
 
         let metadata = dv[0].metadata;
         let categoryColumns = metadata.columns.filter(c => c.roles['identifier'])[0].displayName;
 
+        this.parseValue(ids, viewModel, path, idCategories, labelValues, categoryColumns, parameterValues, highlights);
+
+        this.generateColors(viewModel, parameters);
+        viewModel.IsHighlighted = viewModel.Forms.filter(d => d.Highlighted).length > 0;
+
+        return viewModel;
+    }
+
+    private generateColors(viewModel: ViewModel, category: powerbi.DataViewCategoryColumn) {
+        let colors:string[] = [];
+        let tuples:IValue[] = [];
+
+        for (let index = 0; index < 400; index++) {
+            let color = this.host.colorPalette.getColor(index.toString()).value;
+            colors.push(color)
+        }
+
+        for (let index = 0; index < viewModel.Forms.length; index++) {
+            const element = viewModel.Forms[index];
+            let value = element.ConcactValue;
+            let tuple = tuples.find(i => i.Value == value);
+            if(!tuple)
+            {
+                let color = colors[tuples.length];
+                element.Color = color;
+                tuples.push({Color: color, Value: value})
+            }
+            else
+            {
+                element.Color = tuple.Color;
+            }
+
+        }
+       
+
+    }
+
+    private parseValue(ids: powerbi.PrimitiveValue[], viewModel: ViewModel, path: powerbi.PrimitiveValue[], idCategories: powerbi.DataViewCategoryColumn, labelValues: powerbi.PrimitiveValue[], categoryColumns: string, parameterValues: powerbi.PrimitiveValue[], highlights: powerbi.PrimitiveValue[]) {
         for (let i = 0, len = ids.length; i < len; i++) {
 
-            let form = viewModel.Forms.find(j => j.Id == ids[i])
+            let form = viewModel.Forms.find(j => j.Id == ids[i]);
             if (!form) {
                 form = Form.PARSE(<string>ids[i], <string>path[i]);
 
@@ -233,7 +278,7 @@ export class Visual implements IVisual {
                 form.Tooltip = [{
                     displayName: categoryColumns,
                     value: form.Id
-                }]
+                }];
 
                 viewModel.Forms.push(form);
             }
@@ -248,16 +293,8 @@ export class Visual implements IVisual {
             form.Values.push({
                 Value: t,
                 Color: ''
-            })
+            });
         }
-
-        viewModel.Forms.forEach(element => {
-            element.Color = this.host.colorPalette.getColor(element.ConcactValue).value;
-        });
-
-        viewModel.IsHighlighted = viewModel.Forms.filter(d => d.Highlighted).length > 0;
-
-        return viewModel;
     }
 
     private generateText(viewModel: IViewModel) {
@@ -289,7 +326,6 @@ export class Visual implements IVisual {
                 .remove()
         }
     }
-
 
     private generateForms() {
         let forms = this.formGroup
@@ -324,11 +360,12 @@ export class Visual implements IVisual {
                                     : 0.5
                                 : 1.0,
 
-                            'fill': ids.length > 0
+                            'fill': this.getColor(d)
+                            /*ids.length > 0
                                 ? d => ids.indexOf(d.Identity) >= 0
                                     ? this.settings.Color.Highlight
                                     : this.settings.Color.Basic
-                                : d => this.getColor(d)
+                                : d => this.getColor(d)*/
                         })
                     })
             })
@@ -411,8 +448,6 @@ export class Visual implements IVisual {
 
     }
 
-
-
     private getColor(data: IForm): string {
         if (this.viewModel.IsColored) {
             return data.Color
@@ -448,7 +483,7 @@ export class Visual implements IVisual {
         switch (placement) {
             case 0:
             case 1:
-                return null;
+                return 'grid';
             case 2:
             case 3:
                 return 'flex';

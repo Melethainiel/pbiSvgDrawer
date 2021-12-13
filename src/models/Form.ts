@@ -18,8 +18,8 @@ export class Form implements IForm {
     }
 
     get ConcactValue(): string {
-        let t = this._values.map(i => i.Value).join(",");
-        return t;
+        this.Ct = this._values.map(i => i.Value).join(",").toString();
+        return this.Ct;
     }
     get ConcactValue2(): string {
         let t = this._values.map(i => i.Value).join("\r\n");
@@ -52,6 +52,7 @@ export class Form implements IForm {
     Label: string;
     Identity: powerbi.visuals.ISelectionId;
     Tooltip: powerbi.extensibility.VisualTooltipDataItem[];
+    Ct: string;
 
     public static PARSE(id: string, value: string): Form {
 
